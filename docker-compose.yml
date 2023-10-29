@@ -1,0 +1,33 @@
+version: '3'
+
+services:
+  miningcore:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "4000:4000"
+      - "3436:3436"
+    volumes:
+       - './config.json:/home/config.json'
+    depends_on:
+      - postgresql
+    networks:
+      - mining-core-network
+
+  postgresql:
+    image: postgres:13
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: miningcore
+      POSTGRES_USER: miningcore
+      POSTGRES_PASSWORD: miningcore
+    volumes:
+      - './createdb.sql:/home/createdb.sql'
+    networks:
+      - mining-core-network
+
+
+networks:
+  mining-core-network:
