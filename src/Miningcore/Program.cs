@@ -27,7 +27,9 @@ using Miningcore.Api.Responses;
 using Miningcore.Configuration;
 using Miningcore.Crypto.Hashing.Algorithms;
 using Miningcore.Crypto.Hashing.Equihash;
-using Miningcore.Crypto.Hashing.Ethash;
+using Miningcore.Crypto.Hashing.Ethash.Etchash;
+using Miningcore.Crypto.Hashing.Ethash.Ethash;
+using Miningcore.Crypto.Hashing.Ethash.Ubqhash;
 using Miningcore.Extensions;
 using Miningcore.Messaging;
 using Miningcore.Mining;
@@ -53,10 +55,10 @@ using NLog.Layouts;
 using NLog.Targets;
 using Prometheus;
 using WebSocketManager;
-using static Miningcore.Util.ActionUtils;
 using ILogger = NLog.ILogger;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 using NexaPow = Miningcore.Native.NexaPow;
+using static Miningcore.Util.ActionUtils;
 
 // ReSharper disable AssignNullToNotNullAttribute
 // ReSharper disable PossibleNullReferenceException
@@ -184,12 +186,12 @@ public class Program : BackgroundService
                         });
 
                         // NSwag
-#if DEBUG
+                        #if DEBUG
                         services.AddOpenApiDocument(settings =>
                         {
                             settings.DocumentProcessors.Insert(0, new NSwagDocumentProcessor());
                         });
-#endif
+                        #endif
 
                         services.AddResponseCompression();
                         services.AddCors();
@@ -210,24 +212,18 @@ public class Program : BackgroundService
 
                         app.UseMiddleware<ApiExceptionHandlingMiddleware>();
 
-                        if(!clusterConfig.Api.DisableAdminIpWhitelist)
+                        UseIpWhiteList(app, true, new[]
                         {
-                            UseIpWhiteList(app, true, new[]
-                            {
                             "/api/admin"
-                            }, clusterConfig.Api?.AdminIpWhitelist);
-                        }
-                        if(!clusterConfig.Api.DisableMetricsIpWhitelist)
+                        }, clusterConfig.Api?.AdminIpWhitelist);
+                        UseIpWhiteList(app, true, new[]
                         {
-                            UseIpWhiteList(app, true, new[]
-                            {
                             "/metrics"
-                            }, clusterConfig.Api?.MetricsIpWhitelist);
-                        }
+                        }, clusterConfig.Api?.MetricsIpWhitelist);
 
-#if DEBUG
+                        #if DEBUG
                         app.UseOpenApi();
-#endif
+                        #endif
 
                         app.UseResponseCompression();
                         app.UseCors(corsPolicyBuilder => corsPolicyBuilder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
@@ -300,11 +296,11 @@ public class Program : BackgroundService
         if(clusterConfig.ShareRelay == null)
         {
             services.AddHostedService<ShareRecorder>();
-            services.AddHostedService<RelayReceiver>();
+            services.AddHostedService<ShareReceiver>();
         }
 
         else
-            services.AddHostedService<RelayPublisher>();
+            services.AddHostedService<ShareRelay>();
 
         // API
         if(clusterConfig.Api == null || clusterConfig.Api.Enabled)
@@ -317,16 +313,10 @@ public class Program : BackgroundService
         else
             logger.Info("Payment processing is not enabled");
 
-        if(clusterConfig.Statistics == null || clusterConfig.Statistics.EnableStats)
+        if(clusterConfig.ShareRelay == null)
         {
             // Pool stats
             services.AddHostedService<StatsRecorder>();
-        }
-
-        if(clusterConfig.Statistics == null || clusterConfig.Statistics.EnableReportedHashrate)
-        {
-            // Enable dedicated reported hasrate recording if stats are disabled and no share relay is configured
-            services.AddHostedService<ReportedHashrateRecorder>();
         }
     }
 
@@ -382,20 +372,20 @@ public class Program : BackgroundService
             .Where(config => config.Enabled)
             .Select(config => RunPool(config, coinTemplates, ct));
 
-        await Guard(() => Task.WhenAll(tasks), ex =>
+        await Guard(()=> Task.WhenAll(tasks), ex =>
         {
             switch(ex)
             {
                 case PoolStartupException pse:
-                    {
-                        var _logger = pse.PoolId != null ? LogUtil.GetPoolScopedLogger(GetType(), pse.PoolId) : logger;
-                        _logger.Error(() => $"{pse.Message}");
+                {
+                    var _logger = pse.PoolId != null ? LogUtil.GetPoolScopedLogger(GetType(), pse.PoolId) : logger;
+                    _logger.Error(() => $"{pse.Message}");
 
-                        logger.Error(() => "Cluster cannot start. Good Bye!");
+                    logger.Error(() => "Cluster cannot start. Good Bye!");
 
-                        hal.StopApplication();
-                        break;
-                    }
+                    hal.StopApplication();
+                    break;
+                }
 
                 default:
                     throw ex;
@@ -464,8 +454,6 @@ public class Program : BackgroundService
         foreach(var config in clusterConfig.Pools)
         {
             config.EnableInternalStratum ??= clusterConfig.ShareRelays == null || clusterConfig.ShareRelays.Length == 0;
-            if(clusterConfig.DisableAllStratum)
-                config.EnableInternalStratum = false;
         }
 
         try
@@ -548,7 +536,7 @@ public class Program : BackgroundService
 
         versionOption = app.Option("-v|--version", "Version Information", CommandOptionType.NoValue);
         configFileOption = app.Option("-c|--config <configfile>", "Configuration File", CommandOptionType.SingleValue);
-        dumpConfigOption = app.Option("-dc|--dumpconfig", "Dump the configuration (useful for trouble-shooting typos in the config file)", CommandOptionType.NoValue);
+        dumpConfigOption = app.Option("-dc|--dumpconfig", "Dump the configuration (useful for trouble-shooting typos in the config file)",CommandOptionType.NoValue);
         shareRecoveryOption = app.Option("-rs", "Import lost shares using existing recovery file", CommandOptionType.SingleValue);
         generateSchemaOption = app.Option("-gcs|--generate-config-schema <outputfile>", "Generate JSON schema from configuration options", CommandOptionType.SingleValue);
         app.HelpOption("-? | -h | --help");
@@ -575,7 +563,7 @@ public class Program : BackgroundService
                 {
                     using(var validatingReader = new JSchemaValidatingReader(jsonReader)
                     {
-                        Schema = LoadSchema()
+                        Schema =  LoadSchema()
                     })
                     {
                         return serializer.Deserialize<ClusterConfig>(validatingReader);
@@ -797,7 +785,13 @@ public class Program : BackgroundService
         EquihashSolver.MaxThreads = clusterConfig.EquihashMaxThreads ?? 1;
 
         // Configure Ethhash
-        Dag.messageBus = messageBus;
+        Miningcore.Crypto.Hashing.Ethash.Ethash.Cache.messageBus = messageBus;
+
+        // Configure Etchash
+        Miningcore.Crypto.Hashing.Ethash.Etchash.Cache.messageBus = messageBus;
+
+        // Configure Ubqhash
+        Miningcore.Crypto.Hashing.Ethash.Ubqhash.Cache.messageBus = messageBus;
 
         // Configure Verthash
         Verthash.messageBus = messageBus;
@@ -811,9 +805,6 @@ public class Program : BackgroundService
 
         // Configure RandomARQ
         RandomARQ.messageBus = messageBus;
-
-        // Configure AstroBWT
-        Miningcore.Native.Astrobwt.messageBus = messageBus;
 
         // Configure NexaPow
         Crypto.Hashing.Algorithms.NexaPow.messageBus = messageBus;
@@ -844,7 +835,7 @@ public class Program : BackgroundService
 
         if(enableLegacyTimestampBehavior)
         {
-            logger.Info(() => "Enabling Npgsql Legacy Timestamp Behavior");
+            logger.Info(()=> "Enabling Npgsql Legacy Timestamp Behavior");
 
             AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
         }
@@ -907,7 +898,7 @@ public class Program : BackgroundService
 
         connectionString.Append($"CommandTimeout={pgConfig.CommandTimeout ?? 300};");
 
-        logger.Debug(() => $"Using postgres connection string: {connectionString}");
+        logger.Debug(()=> $"Using postgres connection string: {connectionString}");
 
         // register connection factory
         builder.RegisterInstance(new PgConnectionFactory(connectionString.ToString()))

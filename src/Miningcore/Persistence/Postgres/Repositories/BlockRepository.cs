@@ -21,9 +21,9 @@ public class BlockRepository : IBlockRepository
 
         const string query =
             @"INSERT INTO blocks(poolid, blockheight, networkdifficulty, status, type, transactionconfirmationdata,
-                miner, reward, effort, confirmationprogress, source, hash, created)
+                miner, reward, effort, minereffort, confirmationprogress, source, hash, created)
             VALUES(@poolid, @blockheight, @networkdifficulty, @status, @type, @transactionconfirmationdata,
-                @miner, @reward, @effort, @confirmationprogress, @source, @hash, @created)";
+                @miner, @reward, (SELECT SUM(difficulty / networkdifficulty) FROM shares WHERE poolid = @poolId AND created > (SELECT created FROM blocks WHERE poolid = @poolId ORDER BY created DESC LIMIT 1) AND created < now()), (SELECT SUM(difficulty / networkdifficulty) FROM shares WHERE poolid = @poolId AND miner = @miner AND created > (SELECT created FROM blocks WHERE poolid = @poolId AND miner = @miner ORDER BY created DESC LIMIT 1) AND created < now()), @confirmationprogress, @source, @hash, @created)";
 
         await con.ExecuteAsync(query, mapped, tx);
     }
@@ -53,6 +53,24 @@ public class BlockRepository : IBlockRepository
         return (await con.QueryAsync<Entities.Block>(new CommandDefinition(query, new
         {
             poolId,
+            status = status.Select(x => x.ToString().ToLower()).ToArray(),
+            offset = page * pageSize,
+            pageSize
+        }, cancellationToken: ct)))
+            .Select(mapper.Map<Block>)
+            .ToArray();
+    }
+
+    public async Task<Block[]> PageMinerBlocksAsync(IDbConnection con, string poolId, string address, BlockStatus[] status,
+        int page, int pageSize, CancellationToken ct)
+    {
+        const string query = @"SELECT * FROM blocks WHERE poolid = @poolid AND status = ANY(@status) AND miner = @address
+            ORDER BY created DESC OFFSET @offset FETCH NEXT @pageSize ROWS ONLY";
+
+        return (await con.QueryAsync<Entities.Block>(new CommandDefinition(query, new
+        {
+            poolId,
+	    address,
             status = status.Select(x => x.ToString().ToLower()).ToArray(),
             offset = page * pageSize,
             pageSize
@@ -113,13 +131,43 @@ public class BlockRepository : IBlockRepository
 
         return con.ExecuteScalarAsync<DateTime?>(query, new { poolId });
     }
-
-    public async Task<Block> GetBlockByHeightAsync(IDbConnection con, string poolId, long height)
+    
+    public async Task<Block> GetBlockByPoolHeightAndTypeAsync(IDbConnection con, string poolId, long height, string type)
     {
-        const string query = @"SELECT * FROM blocks WHERE poolid = @poolId AND blockheight = @height";
+        const string query = @"SELECT * FROM blocks WHERE poolid = @poolId AND blockheight = @height AND type = @type";
 
-        var entity = await con.QuerySingleOrDefaultAsync<Entities.Block>(new CommandDefinition(query, new { poolId, height }));
-
-        return entity == null ? null : mapper.Map<Block>(entity);
+        return (await con.QueryAsync<Entities.Block>(query, new
+        { 
+            poolId,
+            height,
+            type
+        }))
+            .Select(mapper.Map<Block>)
+            .FirstOrDefault();
+    }
+    
+    public async Task<uint> GetPoolDuplicateBlockCountByPoolHeightNoTypeAndStatusAsync(IDbConnection con, string poolId, long height, BlockStatus[] status)
+    {
+        const string query = @"SELECT COUNT(id) FROM blocks WHERE poolid = @poolId AND blockheight = @height AND status = ANY(@status)";
+        
+        return await con.ExecuteScalarAsync<uint>(new CommandDefinition(query, new
+        {
+            poolId,
+            height,
+            status = status.Select(x => x.ToString().ToLower()).ToArray()
+        }));
+    }
+    
+    public async Task<uint> GetPoolDuplicateBlockBeforeCountByPoolHeightNoTypeAndStatusAsync(IDbConnection con, string poolId, long height, BlockStatus[] status, DateTime before)
+    {
+        const string query = @"SELECT COUNT(id) FROM blocks WHERE poolid = @poolId AND blockheight = @height AND status = ANY(@status) AND created < @before";
+        
+        return await con.ExecuteScalarAsync<uint>(new CommandDefinition(query, new
+        {
+            poolId,
+            height,
+            status = status.Select(x => x.ToString().ToLower()).ToArray(),
+            before
+        }));
     }
 }

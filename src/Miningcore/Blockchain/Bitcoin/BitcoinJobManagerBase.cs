@@ -466,6 +466,11 @@ public abstract class BitcoinJobManagerBase<TJob> : JobManagerBase<TJob>
         else
             network = daemonInfoResponse.Testnet ? Network.TestNet : Network.Main;
 
+		if(blockchainInfoResponse.Chain == "nexa")
+		{
+			network = Network.Main;
+		}
+
         PostChainIdentifyConfigure();
 
         // ensure pool owns wallet
@@ -531,10 +536,13 @@ public abstract class BitcoinJobManagerBase<TJob> : JobManagerBase<TJob>
         switch(addressType.Value)
         {
             case BitcoinAddressType.BechSegwit:
-                return BitcoinUtils.BechSegwitAddressToDestination(poolConfig.Address, network);
+                return BitcoinUtils.BechSegwitAddressToDestination(poolConfig.Address, network, extraPoolConfig?.BechPrefix);
 
             case BitcoinAddressType.BCash:
                 return BitcoinUtils.BCashAddressToDestination(poolConfig.Address, network);
+
+            case BitcoinAddressType.Litecoin:
+                return BitcoinUtils.LitecoinAddressToDestination(poolConfig.Address, network);
 
             default:
                 return BitcoinUtils.AddressToDestination(poolConfig.Address, network);

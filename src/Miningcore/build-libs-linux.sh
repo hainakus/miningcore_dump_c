@@ -12,8 +12,6 @@ AVX512F=$(../Native/check_cpu.sh avx512f && echo -mavx512f || echo)
 
 export CPU_FLAGS="$AES $SSE2 $SSE3 $SSSE3 $AVX $AVX2 $AVX512F"
 
-echo "CPU_FLAGS=$CPU_FLAGS"
-
 HAVE_AES=$(../Native/check_cpu.sh aes && echo -D__AES__ || echo)
 HAVE_SSE2=$(../Native/check_cpu.sh sse2 && echo -DHAVE_SSE2 || echo)
 HAVE_SSE3=$(../Native/check_cpu.sh sse3 && echo -DHAVE_SSE3 || echo)
@@ -24,15 +22,18 @@ HAVE_AVX512F=$(../Native/check_cpu.sh avx512f && echo -DHAVE_AVX512F || echo)
 
 export HAVE_FEATURE="$HAVE_AES $HAVE_SSE2 $HAVE_SSE3 $HAVE_SSSE3 $HAVE_AVX $HAVE_AVX2 $HAVE_AVX512F"
 
-echo "HAVE_FEATURES=$HAVE_FEATURE"
+(cd ../Native/libmultihash && make -j clean && make -j) && mv ../Native/libmultihash/libmultihash.so "$OutDir"
+(cd ../Native/libnexapow && rm -rf secp256k1 && git clone https://github.com/bitcoin-ABC/secp256k1) && (cd ../Native/libnexapow && make clean && make) && mv ../Native/libnexapow/libnexapow.so "$OutDir"
+(cd ../Native/libetchash && make -j clean && make -j) && mv ../Native/libetchash/libetchash.so "$OutDir"
+(cd ../Native/libethhash && make -j clean && make -j) && mv ../Native/libethhash/libethhash.so "$OutDir"
+(cd ../Native/libethhashb3 && make -j clean && make -j) && mv ../Native/libethhashb3/libethhashb3.so "$OutDir"
+(cd ../Native/libubqhash && make -j clean && make -j) && mv ../Native/libubqhash/libubqhash.so "$OutDir"
+(cd ../Native/libcryptonote && make -j clean && make -j) && mv ../Native/libcryptonote/libcryptonote.so "$OutDir"
+(cd ../Native/libcryptonight && make -j clean && make -j) && mv ../Native/libcryptonight/libcryptonight.so "$OutDir"
+(cd ../Native/libkawpow && make -j clean && make -j) && mv ../Native/libkawpow/libkawpow.so "$OutDir"
+(cd ../Native/libfiropow && make -j clean && make -j) && mv ../Native/libfiropow/libfiropow.so "$OutDir"
+(cd ../Native/libevrprogpow && make -j clean && make -j) && mv ../Native/libevrprogpow/libevrprogpow.so "$OutDir"
 
-
-(cd ../Native/libnexapow && make clean && make) && mv ../Native/libnexapow/libnexapow.so "$OutDir"
-(cd ../Native/libmultihash && make clean && make -j) && mv ../Native/libmultihash/libmultihash.so "$OutDir"
-(cd ../Native/libethhash && make clean && make -j) && mv ../Native/libethhash/libethhash.so "$OutDir"
-(cd ../Native/libcryptonote && make clean && make -j) && mv ../Native/libcryptonote/libcryptonote.so "$OutDir"
-(cd ../Native/libcryptonight && make clean && make -j) && mv ../Native/libcryptonight/libcryptonight.so "$OutDir"
-(cd ../Native/libastrobwt && make clean && make -j) && mv ../Native/libastrobwt/libastrobwt.so "$OutDir"
 
 ((cd /tmp && rm -rf RandomX && git clone https://github.com/tevador/RandomX && cd RandomX && git checkout tags/v1.1.10 && mkdir build && cd build && cmake -DARCH=native .. && make -j) && (cd ../Native/librandomx && cp /tmp/RandomX/build/librandomx.a . && make -j clean && make -j) && mv ../Native/librandomx/librandomx.so "$OutDir")
 ((cd /tmp && rm -rf RandomARQ && git clone https://github.com/arqma/RandomARQ && cd RandomARQ && git checkout 14850620439045b319fa6398f5a164715c4a66ce && mkdir build && cd build && cmake -DARCH=native .. && make -j) && (cd ../Native/librandomarq && cp /tmp/RandomARQ/build/librandomx.a . && make -j clean && make -j) && mv ../Native/librandomarq/librandomarq.so "$OutDir")

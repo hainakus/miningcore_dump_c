@@ -91,7 +91,6 @@ public class BitcoinPayoutHandler : PayoutHandlerBase,
         Contract.RequiresNonNull(poolConfig);
         Contract.RequiresNonNull(blocks);
 
-
         var pageSize = 100;
         var pageCount = (int) Math.Ceiling(blocks.Length / (double) pageSize);
         var result = new List<Block>();

@@ -1,5 +1,10 @@
+using System.Collections.Concurrent;
+using System.Data;
+using System.Globalization;
+using System.Net;
 using Autofac;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ActionConstraints;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Miningcore.Api.Extensions;
 using Miningcore.Api.Responses;
@@ -11,11 +16,6 @@ using Miningcore.Persistence.Model;
 using Miningcore.Persistence.Model.Projections;
 using Miningcore.Persistence.Repositories;
 using Miningcore.Time;
-using System.Collections.Concurrent;
-using System.Data;
-using System.Globalization;
-using System.Net;
-using Microsoft.AspNetCore.Mvc.ActionConstraints;
 using NLog;
 
 namespace Miningcore.Api.Controllers;
@@ -73,9 +73,10 @@ public class PoolApiController : ApiControllerBase
 
                 if(lastBlockTime.HasValue)
                 {
-                    DateTime startTime = lastBlockTime.Value;
-                    var poolEffort = await cf.Run(con => shareRepo.GetEffortBetweenCreatedAsync(con, config.Id, pool.ShareMultiplier, startTime, clock.Now));
-                    result.PoolEffort = poolEffort.Value;
+                    var startTime = lastBlockTime.Value;
+                    var poolEffort = await cf.Run(con => shareRepo.GetEffortBetweenCreatedAsync(con, config.Id, startTime, clock.Now));
+                    if(poolEffort.HasValue)
+                        result.PoolEffort = poolEffort.Value;
                 }
 
                 var from = clock.Now.AddHours(-topMinersRange);
@@ -141,9 +142,10 @@ public class PoolApiController : ApiControllerBase
 
         if(lastBlockTime.HasValue)
         {
-            DateTime startTime = lastBlockTime.Value;
-            var poolEffort = await cf.Run(con => shareRepo.GetEffortBetweenCreatedAsync(con, pool.Id, poolInstance.ShareMultiplier, startTime, clock.Now));
-            response.Pool.PoolEffort = poolEffort.Value;
+            var startTime = lastBlockTime.Value;
+            var poolEffort = await cf.Run(con => shareRepo.GetEffortBetweenCreatedAsync(con, pool.Id, startTime, clock.Now));
+            if(poolEffort.HasValue)
+                response.Pool.PoolEffort = poolEffort.Value;
         }
 
         var from = clock.Now.AddHours(-topMinersRange);
@@ -395,6 +397,50 @@ public class PoolApiController : ApiControllerBase
         return stats;
     }
 
+    [HttpGet("{poolId}/miners/{address}/blocks")]
+    public async Task<Responses.Block[]> PageMinerBlocksAsync(
+        string poolId, string address, [FromQuery] int page, [FromQuery] int pageSize = 15, [FromQuery] BlockStatus[] state = null)
+    {
+        var pool = GetPool(poolId);
+        var ct = HttpContext.RequestAborted;
+
+        if(string.IsNullOrEmpty(address))
+            throw new ApiException("Invalid or missing miner address", HttpStatusCode.NotFound);
+
+        if(pool.Template.Family == CoinFamily.Ethereum)
+            address = address.ToLower();
+
+        var blockStates = state is { Length: > 0 } ?
+            state :
+            new[] { BlockStatus.Confirmed, BlockStatus.Pending, BlockStatus.Orphaned };
+
+        var blocks = (await cf.Run(con => blocksRepo.PageMinerBlocksAsync(con, pool.Id, address, blockStates, page, pageSize, ct)))
+            .Select(mapper.Map<Responses.Block>)
+            .ToArray();
+
+        // enrich blocks
+        var blockInfobaseDict = pool.Template.ExplorerBlockLinks;
+
+        foreach(var block in blocks)
+        {
+            // compute infoLink
+            if(blockInfobaseDict != null)
+            {
+                blockInfobaseDict.TryGetValue(!string.IsNullOrEmpty(block.Type) ? block.Type : "block", out var blockInfobaseUrl);
+
+                if(!string.IsNullOrEmpty(blockInfobaseUrl))
+                {
+                    if(blockInfobaseUrl.Contains(CoinMetaData.BlockHeightPH))
+                        block.InfoLink = blockInfobaseUrl.Replace(CoinMetaData.BlockHeightPH, block.BlockHeight.ToString(CultureInfo.InvariantCulture));
+                    else if(blockInfobaseUrl.Contains(CoinMetaData.BlockHashPH) && !string.IsNullOrEmpty(block.Hash))
+                        block.InfoLink = blockInfobaseUrl.Replace(CoinMetaData.BlockHashPH, block.Hash);
+                }
+            }
+        }
+
+        return blocks;
+    }
+
     [HttpGet("{poolId}/miners/{address}/payments")]
     public async Task<Responses.Payment[]> PageMinerPaymentsAsync(
         string poolId, string address, [FromQuery] int page, [FromQuery] int pageSize = 15)
@@ -587,7 +633,7 @@ public class PoolApiController : ApiControllerBase
         if(pool.Template.Family == CoinFamily.Ethereum)
             address = address.ToLower();
 
-        var result = await cf.Run(con=> minerRepo.GetSettingsAsync(con, null, pool.Id, address));
+        var result = await cf.Run(con => minerRepo.GetSettingsAsync(con, null, pool.Id, address));
 
         if(result == null)
             throw new ApiException("No settings found", HttpStatusCode.NotFound);
@@ -614,14 +660,14 @@ public class PoolApiController : ApiControllerBase
             throw new ApiException("Invalid IP address", HttpStatusCode.BadRequest);
 
         // fetch recent IPs
-        var ips = await cf.Run(con=> shareRepo.GetRecentyUsedIpAddressesAsync(con, null, poolId, address, ct));
+        var ips = await cf.Run(con => shareRepo.GetRecentyUsedIpAddressesAsync(con, null, poolId, address, ct));
 
         // any known ips?
         if(ips == null || ips.Length == 0)
             throw new ApiException("Address not recently used for mining", HttpStatusCode.NotFound);
 
         // match?
-        if(!ips.Any(x=> IPAddress.TryParse(x, out var ipAddress) && ipAddress.IsEqual(requestIp)))
+        if(!ips.Any(x => IPAddress.TryParse(x, out var ipAddress) && ipAddress.IsEqual(requestIp)))
             throw new ApiException("None of the recently used IP addresses matches the request", HttpStatusCode.Forbidden);
 
         // map settings
@@ -639,7 +685,7 @@ public class PoolApiController : ApiControllerBase
         {
             await minerRepo.UpdateSettingsAsync(con, tx, mapped);
 
-            logger.Info(()=> $"Updated settings for pool {pool.Id}, miner {address}");
+            logger.Info(() => $"Updated settings for pool {pool.Id}, miner {address}");
 
             var result = await minerRepo.GetSettingsAsync(con, tx, mapped.PoolId, mapped.Address);
             return mapper.Map<Responses.MinerSettings>(result);
@@ -662,7 +708,7 @@ public class PoolApiController : ApiControllerBase
 
                 start = end.AddHours(-1);
 
-                stats = await cf.Run(con => statsRepo.GetMinerPerformanceBetweenTenMinutelyAsync(con, pool.Id, address, start, end, ct));
+                stats = await cf.Run(con => statsRepo.GetMinerPerformanceBetweenThreeMinutelyAsync(con, pool.Id, address, start, end, ct));
                 break;
 
             case SampleRange.Day:
@@ -675,16 +721,19 @@ public class PoolApiController : ApiControllerBase
 
                 start = end.AddDays(-1);
 
-                stats = await cf.Run(con => statsRepo.GetMinerPerformanceBetweenTenMinutelyAsync(con, pool.Id, address, start, end, ct));
+                stats = await cf.Run(con => statsRepo.GetMinerPerformanceBetweenHourlyAsync(con, pool.Id, address, start, end, ct));
                 break;
 
             case SampleRange.Month:
-                end = end.AddSeconds(-end.Second);
+                if(end.Hour < 12)
+                    end = end.AddDays(-1);
+
+                end = end.Date;
 
                 // set range
                 start = end.AddMonths(-1);
 
-                stats = await cf.Run(con => statsRepo.GetMinerPerformanceBetweenTenMinutelyAsync(con, pool.Id, address, start, end, ct));
+                stats = await cf.Run(con => statsRepo.GetMinerPerformanceBetweenDailyAsync(con, pool.Id, address, start, end, ct));
                 break;
         }
 
