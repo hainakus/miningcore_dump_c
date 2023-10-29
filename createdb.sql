@@ -1,23 +1,5 @@
 SET ROLE miningcore;
 
-CREATE TABLE shares
-(
-	poolid TEXT NOT NULL,
-	blockheight BIGINT NOT NULL,
-	difficulty DOUBLE PRECISION NOT NULL,
-	networkdifficulty DOUBLE PRECISION NOT NULL,
-	miner TEXT NOT NULL,
-	worker TEXT NULL,
-	useragent TEXT NULL,
-	ipaddress TEXT NOT NULL,
-    source TEXT NULL,
-	created TIMESTAMPTZ NOT NULL
-);
-
-CREATE INDEX IDX_SHARES_POOL_MINER on shares(poolid, miner);
-CREATE INDEX IDX_SHARES_POOL_CREATED ON shares(poolid, created);
-CREATE INDEX IDX_SHARES_POOL_MINER_DIFFICULTY on shares(poolid, miner, difficulty);
-
 CREATE TABLE blocks
 (
 	id BIGSERIAL NOT NULL PRIMARY KEY,
@@ -51,7 +33,7 @@ CREATE TABLE balances
 	primary key(poolid, address)
 );
 
-CREATE TABLE balance_changes
+ CREATE  TABLE  IF NOT EXISTS balance_changes
 (
 	id BIGSERIAL NOT NULL PRIMARY KEY,
 	poolid TEXT NOT NULL,
@@ -122,7 +104,7 @@ CREATE INDEX IDX_MINERSTATS_POOL_MINER_CREATED on minerstats(poolid, miner, crea
 CREATE INDEX IDX_MINERSTATS_POOL_MINER_WORKER_CREATED_HASHRATE on minerstats(poolid,miner,worker,created desc,hashrate);
 
 
-DROP TABLE shares;
+
 
 CREATE TABLE shares
 (
@@ -140,3 +122,6 @@ CREATE TABLE shares
 
 CREATE INDEX IDX_SHARES_CREATED ON SHARES(created);
 CREATE INDEX IDX_SHARES_MINER_DIFFICULTY on SHARES(miner, difficulty);
+
+
+CREATE TABLE shares_eth1 PARTITION OF shares FOR VALUES IN ('eth1');
