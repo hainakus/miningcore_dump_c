@@ -120,3 +120,23 @@ CREATE TABLE minerstats
 CREATE INDEX IDX_MINERSTATS_POOL_CREATED on minerstats(poolid, created);
 CREATE INDEX IDX_MINERSTATS_POOL_MINER_CREATED on minerstats(poolid, miner, created);
 CREATE INDEX IDX_MINERSTATS_POOL_MINER_WORKER_CREATED_HASHRATE on minerstats(poolid,miner,worker,created desc,hashrate);
+
+
+DROP TABLE shares;
+
+CREATE TABLE shares
+(
+    poolid TEXT NOT NULL,
+    blockheight BIGINT NOT NULL,
+    difficulty DOUBLE PRECISION NOT NULL,
+    networkdifficulty DOUBLE PRECISION NOT NULL,
+    miner TEXT NOT NULL,
+    worker TEXT NULL,
+    useragent TEXT NULL,
+    ipaddress TEXT NOT NULL,
+    source TEXT NULL,
+    created TIMESTAMP WITH TIME ZONE NOT NULL
+) PARTITION BY LIST (poolid);
+
+CREATE INDEX IDX_SHARES_CREATED ON SHARES(created);
+CREATE INDEX IDX_SHARES_MINER_DIFFICULTY on SHARES(miner, difficulty);
