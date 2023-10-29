@@ -237,7 +237,7 @@ public class NexaJobManager : BitcoinJobManagerBase<NexaJob>
         if(string.IsNullOrEmpty(workerValue))
             throw new StratumException(StratumError.Other, "missing or invalid workername");
 
-       if (extraNonce1.Contains(context.extraNonce1) != true) {
+       if (context.ExtraNonce1.Contains(extraNonce1) != true) {
                 throw new StratumException(StratumError.Other, "invalid extraNonce1");
         }
         NexaJob job;
