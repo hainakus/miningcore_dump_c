@@ -47,7 +47,7 @@ public class NexaJob
             nonceFinal = stream.ToArray();
         }
 
-        Span<byte> miningHashBytes = stackalloc byte[44]; // 32 bytes commitment + 4 bytes extra nonce + 8 bytes nonce
+        Span<byte> miningHashBytes = stackalloc byte[48]; // 32 bytes commitment + 8 bytes extra nonce + 8 bytes nonce
         using(var stream = new MemoryStream())
         {
             stream.Write(headerCommitmentRev);

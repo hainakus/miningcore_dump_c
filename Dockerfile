@@ -13,4 +13,4 @@ RUN apt-get update && \
     apt-get clean
 EXPOSE  4000-4090
 COPY --from=BUILDER /app/build ./
-CMD ["./Miningcore", "-c", "config.json" ]
+CMD ["./Miningcore", "-c", "/home/config.json" ]
