@@ -38,7 +38,7 @@ public class NexaJob
         var extraNonce1Bytes = extraNonce1.HexToByteArray();
         var nonceBytes = nonce.HexToByteArray();
 
-        Span<byte> nonceFinal = stackalloc byte[12]; // 4 bytes extra nonce + 8 bytes nonce
+        Span<byte> nonceFinal = stackalloc byte[16]; // 4 bytes extra nonce + 8 bytes nonce
         using(var stream = new MemoryStream())
         {
             stream.Write(extraNonce1Bytes);
