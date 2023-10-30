@@ -35,10 +35,10 @@ public class NexaJob
         StratumConnection worker, string nonce, string extraNonce1)
     {
         var context = worker.ContextAs<BitcoinWorkerContext>();
-        var extraNonce1Bytes = extraNonce1.Substring(0, 7).HexToByteArray();
+        var extraNonce1Bytes = nonce.Substring(0, 7).HexToByteArray();
         var nonceBytes = nonce.HexToByteArray();
 
-        Span<byte> nonceFinal = stackalloc byte[12]; // 4 bytes extra nonce + 8 bytes nonce
+        Span<byte> nonceFinal = stackalloc byte[16]; // 4 bytes extra nonce + 8 bytes nonce
         using(var stream = new MemoryStream())
         {
             stream.Write(extraNonce1Bytes);
@@ -47,7 +47,7 @@ public class NexaJob
             nonceFinal = stream.ToArray();
         }
 
-        Span<byte> miningHashBytes = stackalloc byte[44]; // 32 bytes commitment + 4 bytes extra nonce + 8 bytes nonce
+        Span<byte> miningHashBytes = stackalloc byte[48]; // 32 bytes commitment + 4 bytes extra nonce + 8 bytes nonce
         using(var stream = new MemoryStream())
         {
             stream.Write(headerCommitmentRev);
