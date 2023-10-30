@@ -46,7 +46,7 @@ public class ExtraNonceProviderBase : IExtraNonceProvider
 
     private readonly ILogger logger;
 
-    private const int IdBits = 4;
+    private const int IdBits = 8;
     private readonly object counterLock = new();
     protected ulong counter;
     protected byte id;
