@@ -125,7 +125,7 @@ public class NexaJob
         this.headerHasher = headerHasher;
         this.clock = clock;
         Difficulty = new Target(System.Numerics.BigInteger.Parse(BlockTemplate.Target, NumberStyles.HexNumber)).Difficulty;
-        headerCommitmentRev = miningCandidate.HeaderCommitment.HexReverseToByteArray();
+             headerCommitmentRev = miningCandidate.HeaderCommitment.HexToReverseByteArray();
 
         if(!string.IsNullOrEmpty(BlockTemplate.Target))
             blockTargetValue = new uint256(BlockTemplate.Target);
