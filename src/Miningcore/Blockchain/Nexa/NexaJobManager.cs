@@ -230,9 +230,11 @@ public class NexaJobManager : BitcoinJobManagerBase<NexaJob>
 
         var workerValue = (submitParams[0] as string)?.Trim();
         var jobId = submitParams[1] as string;
-        var nonce = submitParams[2] as string;
+        var nonce = submitParams[4] as string;
+         var extraNonce1 = submitParams[2] as string;
+         logger.Info(() => $"{nonce} [{submitParams[2]}] submitted by {context.ExtraNonce1}");
         //var nTime = submitParams[3] as string; // not really required
-        var extraNonce1 = nonce.Substring(8) as string;
+
 
         if(string.IsNullOrEmpty(workerValue))
             throw new StratumException(StratumError.Other, "missing or invalid workername");
