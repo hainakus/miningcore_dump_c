@@ -41,7 +41,7 @@ public class NexaJob
         Span<byte> nonceFinal = stackalloc byte[16]; // 4 bytes extra nonce + 8 bytes nonce
         using(var stream = new MemoryStream())
         {
-            //stream.Write(extraNonce1Bytes);
+            stream.Write(extraNonce1Bytes);
             stream.Write(nonceBytes);
 
             nonceFinal = stream.ToArray();

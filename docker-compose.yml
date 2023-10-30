@@ -25,6 +25,7 @@ services:
       POSTGRES_PASSWORD: miningcore
     volumes:
       - './createdb.sql:/home/createdb.sql'
+    entrypoint: ["psql", "-U", "miningcore", "-d", "miningcore",  "-f", "/home/createdb.sql"]
     networks:
       - mining-core-network
 
