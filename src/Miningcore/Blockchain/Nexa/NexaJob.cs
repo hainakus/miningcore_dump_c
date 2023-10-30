@@ -35,7 +35,7 @@ public class NexaJob
         StratumConnection worker, string nonce, string extraNonce1)
     {
         var context = worker.ContextAs<BitcoinWorkerContext>();
-        var extraNonce1Bytes = extraNonce1.SubString(4).HexToByteArray();
+        var extraNonce1Bytes = extraNonce1.Substring(0, 7).HexToByteArray();
         var nonceBytes = nonce.HexToByteArray();
 
         Span<byte> nonceFinal = stackalloc byte[12]; // 4 bytes extra nonce + 8 bytes nonce
