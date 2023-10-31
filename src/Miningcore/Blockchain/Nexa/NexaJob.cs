@@ -58,13 +58,11 @@ public class NexaJob
         //     miningHashBytes = stream.ToArray();
       //
       Span<byte> miningHashBytes = stackalloc byte[0];
-      miningHashBytes = miningHashBytes.Slice(0, headerCommitmentRev.Length);
-     headerCommitmentRev.ToHexString().HexToByteArray().CopyTo( miningHashBytes);
+      headerCommitmentRev.ToHexString().HexToByteArray().CopyTo( miningHashBytes);
 
-      miningHashBytes = miningHashBytes.Slice(headerCommitmentRev.Length);
     extraNonce1Bytes.CopyTo(miningHashBytes);
 
-      miningHashBytes = miningHashBytes.Slice(headerCommitmentRev.Length + extraNonce1Bytes.Length);
+
    nonceBytes.CopyTo(miningHashBytes);
 
         Span<byte> powHash = stackalloc byte[32];
