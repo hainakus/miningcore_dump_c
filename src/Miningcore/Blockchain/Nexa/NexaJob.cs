@@ -57,13 +57,13 @@ public class NexaJob
         //
         //     miningHashBytes = stream.ToArray();
       //
-      Span<byte> miningHashBytes = stackalloc byte[40];
+      Span<byte> miningHashBytes = stackalloc byte[48];
       headerCommitmentRev.ToHexString().HexToByteArray().CopyTo( miningHashBytes);
 
-    //extraNonce1Bytes.CopyTo(miningHashBytes);
+     //   extraNonce1Bytes.CopyTo(miningHashBytes);
 
 
-   nonceBytes.CopyTo(miningHashBytes);
+   nonceFinal.CopyTo(miningHashBytes);
 
         Span<byte> powHash = stackalloc byte[32];
         headerHasher.Digest(miningHashBytes, powHash);
@@ -133,7 +133,7 @@ public class NexaJob
         this.headerHasher = headerHasher;
         this.clock = clock;
         Difficulty = new Target(System.Numerics.BigInteger.Parse(BlockTemplate.Target, NumberStyles.HexNumber)).Difficulty;
-        headerCommitmentRev = miningCandidate.HeaderCommitment.HexToByteArray();
+        headerCommitmentRev = miningCandidate.HeaderCommitment.HexToReverseByteArray();
 
         if(!string.IsNullOrEmpty(BlockTemplate.Target))
             blockTargetValue = new uint256(BlockTemplate.Target);
