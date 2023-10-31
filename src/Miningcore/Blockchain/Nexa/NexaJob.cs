@@ -57,10 +57,10 @@ public class NexaJob
         //
         //     miningHashBytes = stream.ToArray();
       //
-      Span<byte> miningHashBytes = stackalloc byte[48];
+      Span<byte> miningHashBytes = stackalloc byte[40];
       headerCommitmentRev.ToHexString().HexToByteArray().CopyTo( miningHashBytes);
 
-    extraNonce1Bytes.CopyTo(miningHashBytes);
+    //extraNonce1Bytes.CopyTo(miningHashBytes);
 
 
    nonceBytes.CopyTo(miningHashBytes);
