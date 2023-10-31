@@ -48,7 +48,7 @@ public class NicehashService
             if(!algos.TryGetValue(niceHashAlgo, out var item))
                 return (double?) null;
 
-            return item.MinimalPoolDifficulty;
+            return 12;
         }, ex=> logger.Error(()=> $"Error updating Nicehash diffs: {ex.Message}"));
     }
 
