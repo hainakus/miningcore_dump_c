@@ -68,7 +68,7 @@ public class NexaJob
         // check if the share meets the much harder block difficulty (block candidate)
         var isBlockCandidate = miningValue <= blockTargetValue;
 
-        // test if share meets at least workers current difficulty
+        // test if share meets at least workers current difficultyFon
         if(!isBlockCandidate && ratio < 0.99)
         {
             // check if share matched the previous difficulty from before a vardiff retarget
