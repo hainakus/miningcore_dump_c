@@ -141,13 +141,10 @@ public class NexaJob
         Difficulty = new Target(System.Numerics.BigInteger.Parse(BlockTemplate.Target, NumberStyles.HexNumber)).Difficulty;
         headerCommitmentRev = miningCandidate.HeaderCommitment.HexToReverseByteArray();
 
-        if(!string.IsNullOrEmpty(BlockTemplate.Target))
-            blockTargetValue = new uint256(BlockTemplate.Target);
-        else
-        {
+
             var tmp = new Target(BlockTemplate.Bits.HexToByteArray());
             blockTargetValue = tmp.ToUInt256();
-        }
+
 
         jobParams = new object[]
         {
