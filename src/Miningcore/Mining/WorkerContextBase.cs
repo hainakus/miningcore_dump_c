@@ -88,7 +88,7 @@ public class WorkerContextBase
 
     public void SetDifficulty(double difficulty)
     {
-        PreviousDifficulty = Difficulty;
+        PreviousDifficulty = difficulty;
         Difficulty = difficulty;
     }
 
