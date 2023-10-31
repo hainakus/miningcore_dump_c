@@ -68,16 +68,9 @@ public class NexaPool : PoolBase
         context.IsSubscribed = true;
         context.UserAgent = requestParams.FirstOrDefault()?.Trim();
 
-        // Nicehash support
-        var nicehashDiff = await GetNicehashStaticMinDiff(context, coin.Name, coin.GetAlgorithmName());
 
-        if(nicehashDiff.HasValue)
-        {
-            logger.Info(() => $"[{connection.ConnectionId}] Nicehash detected. Using API supplied difficulty of {nicehashDiff.Value}");
+            context.SetDifficulty(context.Difficulty);
 
-            context.VarDiff = null; // disable vardiff
-            context.SetDifficulty(nicehashDiff.Value);
-        }
 
         // send intial update
         await connection.NotifyAsync(BitcoinStratumMethods.SetDifficulty, new object[] { context.Difficulty });
