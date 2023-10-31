@@ -324,7 +324,7 @@ public abstract class PoolBase : StratumServer,
 
     protected virtual async Task<double?> GetNicehashStaticMinDiff(WorkerContextBase context, string coinName, string algoName)
     {
-        if(context.IsNicehash && clusterConfig.Nicehash?.EnableAutoDiff == true)
+        if(context.IsNicehash )
             return await nicehashService.GetStaticDiff(coinName, algoName, CancellationToken.None);
 
         return null;
