@@ -102,7 +102,7 @@ public abstract class PoolBase : StratumServer,
         var poolEndpoint = poolConfig.Ports[ipEndPoint.Port];
         var varDiff = poolConfig.EnableInternalStratum == true ? poolEndpoint.VarDiff : null;
 
-        context.Init(poolEndpoint.Difficulty, varDiff, clock);
+        context.Init(poolEndpoint.Difficulty, null, clock);
         connection.SetContext(context);
 
         // expect miner to establish communication within a certain time
