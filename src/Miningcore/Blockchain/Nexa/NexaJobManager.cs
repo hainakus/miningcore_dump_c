@@ -236,9 +236,9 @@ public class NexaJobManager : BitcoinJobManagerBase<NexaJob>
         logger.Info(() => $"Submitting block {submitParams[2]} ---- {nonce}");
         if(string.IsNullOrEmpty(workerValue))
             throw new StratumException(StratumError.Other, "missing or invalid workername");
-//
-//         if(extraNonce1 != context.ExtraNonce1)
-//             throw new StratumException(StratumError.Other, "invalid extranonce");
+
+         if((extraNonce1 != context.ExtraNonce1) && !context.IsNicehash)
+             throw new StratumException(StratumError.Other, "invalid extranonce");
 
         NexaJob job;
 
