@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text;
+using Microsoft.Extensions.Logging;
 using Miningcore.Blockchain.Bitcoin.DaemonResponses;
 using Miningcore.Blockchain.Nexa.DaemonResponses;
 using Miningcore.Configuration;
@@ -49,23 +50,15 @@ public class NexaJob
             nonceFinal = stream.ToArray();
         }
         //
-        // Span<byte> miningHashBytes = stackalloc byte[44]; // 32 bytes commitment + 8 bytes extra nonce + 8 bytes nonce
-        // using(var stream = new MemoryStream())
-        // {
-        //     stream.Write(headerCommitmentRev);
-        //     stream.Write(new byte[] {0x0c}); // nonceFinal.Length
-        //     stream.Write(nonceFinal);
-        //
-        //     miningHashBytes = stream.ToArray();
-      //
-      Span<byte> miningHashBytes = stackalloc byte[48];
-      headerCommitmentRev.ToHexString().HexToByteArray().CopyTo( miningHashBytes);
+        Span<byte> miningHashBytes = stackalloc byte[48]; // 32 bytes commitment + 8 bytes extra nonce + 8 bytes nonce
+        using(var stream = new MemoryStream())
+        {
+            stream.Write(headerCommitmentRev);
 
-     //   extraNonce1Bytes.CopyTo(miningHashBytes);
+            stream.Write(nonceFinal);
 
-
-   nonceFinal.CopyTo(miningHashBytes);
-
+            miningHashBytes = stream.ToArray();
+        }
         Span<byte> powHash = stackalloc byte[32];
         headerHasher.Digest(miningHashBytes, powHash);
         var miningValue = new uint256(powHash);
@@ -100,6 +93,10 @@ public class NexaJob
             // Nicehash shares are always valid
 
 
+        }
+        else
+        {
+            isBlockCandidate = miningValue <= blockTargetValue;
         }
 
 
@@ -192,4 +189,5 @@ public class NexaJob
 
         return ProcessShareInternal(worker, nonce, extraNonce1);
     }
+
 }
