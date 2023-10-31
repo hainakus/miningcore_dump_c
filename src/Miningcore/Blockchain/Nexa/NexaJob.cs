@@ -38,6 +38,7 @@ public class NexaJob
         var extraNonce1Bytes = extraNonce1.HexToByteArray();
         var nonceBytes = nonce.HexToByteArray();
 
+
         Span<byte> nonceFinal = stackalloc byte[16]; // 4 bytes extra nonce + 8 bytes nonce
         using(var stream = new MemoryStream())
         {
@@ -46,16 +47,25 @@ public class NexaJob
 
             nonceFinal = stream.ToArray();
         }
+        //
+        // Span<byte> miningHashBytes = stackalloc byte[44]; // 32 bytes commitment + 8 bytes extra nonce + 8 bytes nonce
+        // using(var stream = new MemoryStream())
+        // {
+        //     stream.Write(headerCommitmentRev);
+        //     stream.Write(new byte[] {0x0c}); // nonceFinal.Length
+        //     stream.Write(nonceFinal);
+        //
+        //     miningHashBytes = stream.ToArray();
+      //
+      Span<byte> miningHashBytes = stackalloc byte[0];
+      miningHashBytes = miningHashBytes.Slice(0, headerCommitmentRev.Length);
+     headerCommitmentRev.ToHexString().HexToByteArray().CopyTo( miningHashBytes);
 
-        Span<byte> miningHashBytes = stackalloc byte[44]; // 32 bytes commitment + 8 bytes extra nonce + 8 bytes nonce
-        using(var stream = new MemoryStream())
-        {
-            stream.Write(headerCommitmentRev);
-            stream.Write(new byte[] {0x0c}); // nonceFinal.Length
-            stream.Write(nonceFinal);
+      miningHashBytes = miningHashBytes.Slice(headerCommitmentRev.Length);
+    extraNonce1Bytes.CopyTo(miningHashBytes);
 
-            miningHashBytes = stream.ToArray();
-        }
+      miningHashBytes = miningHashBytes.Slice(headerCommitmentRev.Length + extraNonce1Bytes.Length);
+   nonceBytes.CopyTo(miningHashBytes);
 
         Span<byte> powHash = stackalloc byte[32];
         headerHasher.Digest(miningHashBytes, powHash);

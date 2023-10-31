@@ -321,6 +321,10 @@ public class EthereumPool : PoolBase
 
                 logger.Info(() => $"[{connection.ConnectionId}] Setting static difficulty of {staticDiff.Value}");
             }
+            context.VarDiff = null; // disable vardiff
+            context.SetDifficulty(22);
+
+            logger.Info(() => $"[{connection.ConnectionId}] Setting static difficulty of {22}");
 
             logger.Info(() => $"[{connection.ConnectionId}] Authorized worker {workerValue}");
 
