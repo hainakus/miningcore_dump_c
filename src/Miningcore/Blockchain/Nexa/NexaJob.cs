@@ -11,6 +11,7 @@ using Miningcore.Time;
 using Miningcore.Util;
 using Miningcore.Blockchain.Bitcoin;
 using NBitcoin;
+using NLog.Fluent;
 using Contract = Miningcore.Contracts.Contract;
 
 namespace Miningcore.Blockchain.Nexa;
@@ -77,7 +78,7 @@ public class NexaJob
         var isBlockCandidate = miningValue <= blockTargetValue;
 
         // test if share meets at least workers current difficultyFon
-        if(!isBlockCandidate && ratio < 0.99)
+        if(!isBlockCandidate && !context.IsNicehash && ratio < 0.99)
         {
             // check if share matched the previous difficulty from before a vardiff retarget
             if(context.VarDiff?.LastUpdate != null && context.PreviousDifficulty.HasValue)
@@ -94,6 +95,14 @@ public class NexaJob
             else
                 throw new StratumException(StratumError.LowDifficultyShare, $"low difficulty share ({shareDiff})");
         }
+        else if(!isBlockCandidate && context.IsNicehash)
+        {
+            // Nicehash shares are always valid
+
+
+        }
+
+
 
         var submitParams = new object[]
         {
