@@ -117,7 +117,7 @@ public class NexaPool : PoolBase
                    context.VarDiff == null && staticDiff.Value > context.Difficulty))
             {
                 context.VarDiff = null; // disable vardiff
-                context.SetDifficulty(staticDiff.Value);
+                context.SetDifficulty(22);
 
                 logger.Info(() => $"[{connection.ConnectionId}] Setting static difficulty of {staticDiff.Value}");
 
